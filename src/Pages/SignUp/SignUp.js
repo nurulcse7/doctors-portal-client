@@ -1,8 +1,9 @@
 import React, { useContext, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthProvider';
+import useToken from '../../hooks/useToken';
 
 const SignUp = () => {
   const {
@@ -12,24 +13,63 @@ const SignUp = () => {
   } = useForm();
   const { createUser, updateUser } = useContext(AuthContext);
   const [signUpError, setSignUPError] = useState('');
+  const [createdUserEmail, setCreatedUserEmail] = useState(''); // 75-6
+  const [token] = useToken(createdUserEmail); // 75-6
+  const navigate = useNavigate();
+  
+  if(token){
+    navigate('/');
+  } // 75-6 
+
   const handleSignUp = (data) => {
-    console.log(data);
+    console.log(data); // show email and password in console when user signup
     setSignUPError('');
     createUser(data.email, data.password)
       .then((result) => {
         const user = result.user;
-        console.log(user);
-        toast('User Created Successfully.');
+        console.log(user); // show user details with firebase in console when user signup
+        toast.success('User Created Successfully.');
         const userInfo = {
           displayName: data.name,
         };
         updateUser(userInfo)
-          .then(() => {})
+          .then(() => {
+            saveUser(data.name, data.email);
+          })
           .catch((err) => console.log(err));
       })
       .catch((error) => {
         console.log(error);
         setSignUPError(error.message);
+      });
+  };
+  // 75-4
+  const saveUser = (name, email) => {
+    const user = { name, email };
+    fetch('http://localhost:5000/users', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(user),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log('save user', data) // show acknowledged and insertedId in console when user signup 
+        // navigate('/')
+        // getUserToken(email); // 75-5 
+        setCreatedUserEmail(email); // 75-6 
+      });
+  };
+// V-75-5 // http://localhost:5000/bookings?email=ara@gmail.com
+  const getUserToken = (email) => {
+    fetch(`http://localhost:5000/jwt?email=${email}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.accessToken) {
+          localStorage.setItem('accessToken', data.accessToken);
+          navigate('/');
+        }
       });
   };
 
